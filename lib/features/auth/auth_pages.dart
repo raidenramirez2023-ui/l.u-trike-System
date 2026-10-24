@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -1437,7 +1438,46 @@ class _LoginPageState extends State<LoginPage> {
   final _email = TextEditingController();
   final _pw = TextEditingController();
   bool _busy = false;
+  bool _rememberMe = true;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedEmail();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'remember_email_${widget.portal.name}';
+      final savedEmail = prefs.getString(key) ?? prefs.getString('remember_email');
+      final remember = prefs.getBool('remember_me_${widget.portal.name}') ?? (savedEmail != null);
+      if (savedEmail != null && savedEmail.isNotEmpty && mounted) {
+        setState(() {
+          _email.text = savedEmail;
+          _rememberMe = remember;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveRememberMe() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'remember_email_${widget.portal.name}';
+      final rememberKey = 'remember_me_${widget.portal.name}';
+      if (_rememberMe) {
+        await prefs.setString(key, _email.text.trim());
+        await prefs.setString('remember_email', _email.text.trim());
+        await prefs.setBool(rememberKey, true);
+      } else {
+        await prefs.remove(key);
+        await prefs.remove('remember_email');
+        await prefs.setBool(rememberKey, false);
+      }
+    } catch (_) {}
+  }
 
   Future<void> _submit() async {
     if (!_form.currentState!.validate()) return;
@@ -1446,6 +1486,7 @@ class _LoginPageState extends State<LoginPage> {
       _error = null;
     });
     try {
+      await _saveRememberMe();
       await _auth.signIn(_email.text, _pw.text, widget.portal);
       if (mounted && widget.next != null) context.go(widget.next!);
     } catch (e) {
@@ -1482,15 +1523,53 @@ class _LoginPageState extends State<LoginPage> {
             ),
             const SizedBox(height: 14),
             PasswordField(controller: _pw, validator: _req, onSubmit: _submit),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton(
-                onPressed: () => context.push('/forgot-password'),
-                style: TextButton.styleFrom(textStyle: const TextStyle(fontSize: 12.5)),
-                child: const Text('Forgot password?'),
-              ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                InkWell(
+                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  borderRadius: BorderRadius.circular(AppRadius.xs),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: Checkbox(
+                            value: _rememberMe,
+                            activeColor: AppColors.primary,
+                            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Remember me',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                            color: AppColors.inkSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/forgot-password'),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    textStyle: const TextStyle(fontSize: 12.5),
+                  ),
+                  child: const Text('Forgot password?'),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             FilledButton(
               key: const Key('login-submit'),
               onPressed: _busy ? null : _submit,
