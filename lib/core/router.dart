@@ -43,6 +43,15 @@ GoRouter buildRouter() {
         if (loc.startsWith('/t/')) {
           return '/login/student?next=${Uri.encodeComponent(loc)}';
         }
+        if (loc.startsWith('/student')) {
+          return '/login/student?next=${Uri.encodeComponent(loc)}';
+        }
+        if (loc.startsWith('/driver')) {
+          return '/login/driver?next=${Uri.encodeComponent(loc)}';
+        }
+        if (loc.startsWith('/admin')) {
+          return '/login/admin?next=${Uri.encodeComponent(loc)}';
+        }
         if (!isAuthRoute) return '/';
         return null;
       }

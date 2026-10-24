@@ -10,6 +10,7 @@ import '../../core/ui.dart';
 import '../../data/api.dart';
 import '../../data/auth_controller.dart';
 import '../../data/models.dart';
+import '../shared/terminal_radar_map.dart';
 
 final _auth = AuthController.instance;
 
@@ -795,7 +796,7 @@ class LandingPage extends StatelessWidget {
                             ),
                             icon: const Icon(Icons.radar_rounded, size: 16),
                             label: const Text('View Live Terminal Radar', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, decoration: TextDecoration.underline)),
-                            onPressed: () => context.push('/student'),
+                            onPressed: () => _openLiveTerminalRadar(context),
                           );
 
                           if (isCompact) {
@@ -1084,7 +1085,7 @@ class _LiveTerminalTelemetryPreviewState extends State<_LiveTerminalTelemetryPre
         );
 
         final buttonWidget = FilledButton.tonal(
-          onPressed: () => context.push('/student'),
+          onPressed: () => _openLiveTerminalRadar(context),
           style: FilledButton.styleFrom(
             minimumSize: const Size(36, 36),
             padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1137,6 +1138,464 @@ class _LiveTerminalTelemetryPreviewState extends State<_LiveTerminalTelemetryPre
                 ),
         );
       },
+    );
+  }
+}
+
+void _openLiveTerminalRadar(BuildContext context) {
+  final auth = AuthController.instance;
+  if (auth.signedIn && auth.profile?.role == UserRole.student) {
+    context.push('/student');
+    return;
+  }
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    builder: (ctx) => const _LiveTerminalRadarModal(),
+  );
+}
+
+class _LiveTerminalRadarModal extends StatefulWidget {
+  const _LiveTerminalRadarModal();
+
+  @override
+  State<_LiveTerminalRadarModal> createState() => _LiveTerminalRadarModalState();
+}
+
+class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
+  List<Terminal> _terminals = [];
+  Terminal? _selectedTerminal;
+  TerminalOverview? _overview;
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetch();
+  }
+
+  Future<void> _fetch() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final list = await Api.terminals();
+      if (!mounted) return;
+      if (list.isEmpty) {
+        setState(() {
+          _loading = false;
+          _error = 'No active terminals available at this moment.';
+        });
+        return;
+      }
+      final first = list.first;
+      TerminalOverview? ov;
+      try {
+        ov = await Api.overview(first.id);
+      } catch (_) {}
+
+      if (!mounted) return;
+      setState(() {
+        _terminals = list;
+        _selectedTerminal = first;
+        _overview = ov;
+        _loading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _error = friendlyError(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _onTerminalSelected(Terminal t) async {
+    setState(() {
+      _selectedTerminal = t;
+    });
+    try {
+      final ov = await Api.overview(t.id);
+      if (mounted) {
+        setState(() => _overview = ov);
+      }
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final screenSize = MediaQuery.sizeOf(context);
+    final isMobile = screenSize.width < 600;
+
+    return Dialog(
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 24,
+        vertical: isMobile ? 16 : 24,
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.lg)),
+      backgroundColor: Colors.white,
+      clipBehavior: Clip.antiAlias,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 780,
+          maxHeight: screenSize.height * 0.9,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Modal Header
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 14 : 20, vertical: 14),
+              decoration: const BoxDecoration(
+                color: Color(0xFF0F172A),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(AppRadius.sm),
+                    ),
+                    child: const Icon(Icons.radar_rounded, color: Color(0xFF34D399), size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Text(
+                              'Live Terminal Radar',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15.5,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                                borderRadius: BorderRadius.circular(AppRadius.full),
+                                border: Border.all(color: const Color(0xFF34D399).withValues(alpha: 0.4)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF34D399),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Text(
+                                    'ACTIVE',
+                                    style: TextStyle(
+                                      color: Color(0xFF34D399),
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 1),
+                        const Text(
+                          'Laguna University Campus Terminal Network',
+                          style: TextStyle(
+                            color: Color(0xFF94A3B8),
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 20),
+                    tooltip: 'Close',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+            ),
+
+            // Modal Body
+            Flexible(
+              child: _loading
+                  ? const SizedBox(
+                      height: 240,
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CircularProgressIndicator(strokeWidth: 2.5),
+                            SizedBox(height: 14),
+                            Text('Connecting to terminal telemetry...', style: TextStyle(color: AppColors.inkMuted, fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                    )
+                  : _error != null
+                      ? SizedBox(
+                          height: 200,
+                          child: Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Text(_error!, style: const TextStyle(color: AppColors.danger)),
+                            ),
+                          ),
+                        )
+                      : SingleChildScrollView(
+                          padding: EdgeInsets.all(isMobile ? 12 : 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Terminal Switcher & Stats
+                              if (_terminals.length > 1) ...[
+                                SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: Row(
+                                    children: _terminals.map((t) {
+                                      final isSelected = t.id == _selectedTerminal?.id;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(right: 8),
+                                        child: ChoiceChip(
+                                          label: Text(t.name),
+                                          selected: isSelected,
+                                          selectedColor: AppColors.primarySoft,
+                                          labelStyle: TextStyle(
+                                            color: isSelected ? AppColors.primary : AppColors.inkSecondary,
+                                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                                            fontSize: 12.5,
+                                          ),
+                                          onSelected: (_) => _onTerminalSelected(t),
+                                        ),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+
+                              // Telemetry KPI Bar
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.surfaceMuted,
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                  border: Border.all(color: AppColors.border),
+                                ),
+                                child: Wrap(
+                                  alignment: WrapAlignment.spaceBetween,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 12,
+                                  runSpacing: 8,
+                                  children: [
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(Icons.pin_drop_rounded, size: 16, color: AppColors.primary),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _selectedTerminal?.name ?? 'Terminal Bay',
+                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.ink),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        _TelemetryBadge(
+                                          icon: Icons.electric_rickshaw_rounded,
+                                          label: '${_overview?.inQueue ?? 0} in Queue',
+                                          color: AppColors.primary,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _TelemetryBadge(
+                                          icon: Icons.how_to_reg_rounded,
+                                          label: '${_overview?.accepting ?? 0} Loading',
+                                          color: const Color(0xFFD97706),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _TelemetryBadge(
+                                          icon: Icons.flag_rounded,
+                                          label: '${_overview?.ready ?? 0} Ready',
+                                          color: const Color(0xFF2563EB),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+
+                              // Interactive Live Map
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                                child: Container(
+                                  height: isMobile ? 240 : 310,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(AppRadius.md),
+                                    border: Border.all(color: AppColors.border),
+                                  ),
+                                  child: TerminalRadarMap(
+                                    terminalLat: _selectedTerminal?.lat ?? 14.2575,
+                                    terminalLng: _selectedTerminal?.lng ?? 121.4048,
+                                    terminalName: _selectedTerminal?.name ?? 'Gate 1 Terminal',
+                                    waitingCount: _overview?.inQueue ?? 0,
+                                    height: isMobile ? 240 : 310,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+
+                              // Sign In Callout Footer
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFECFDF5),
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                  border: Border.all(color: const Color(0xFFA7F3D0)),
+                                ),
+                                child: isMobile
+                                    ? Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          const Text(
+                                            'Want to queue or request a gate pick-up beacon?',
+                                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5, color: Color(0xFF065F46)),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: FilledButton(
+                                                  style: FilledButton.styleFrom(
+                                                    backgroundColor: AppColors.primary,
+                                                    padding: const EdgeInsets.symmetric(vertical: 9),
+                                                    visualDensity: VisualDensity.compact,
+                                                  ),
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                    context.push('/login/student?next=/student');
+                                                  },
+                                                  child: const Text('Student Sign In', style: TextStyle(fontSize: 12)),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: OutlinedButton(
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: AppColors.primary,
+                                                    side: const BorderSide(color: AppColors.primary),
+                                                    padding: const EdgeInsets.symmetric(vertical: 9),
+                                                    visualDensity: VisualDensity.compact,
+                                                  ),
+                                                  onPressed: () {
+                                                    Navigator.of(context).pop();
+                                                    context.push('/register/student');
+                                                  },
+                                                  child: const Text('Register', style: TextStyle(fontSize: 12)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      )
+                                    : Row(
+                                        children: [
+                                          const Expanded(
+                                            child: Text(
+                                              'Want to queue or request a gate pick-up beacon?',
+                                              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF065F46)),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: AppColors.primary,
+                                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                              visualDensity: VisualDensity.compact,
+                                            ),
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              context.push('/login/student?next=/student');
+                                            },
+                                            child: const Text('Student Sign In', style: TextStyle(fontSize: 12.5)),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          OutlinedButton(
+                                            style: OutlinedButton.styleFrom(
+                                              foregroundColor: AppColors.primary,
+                                              side: const BorderSide(color: AppColors.primary),
+                                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                              visualDensity: VisualDensity.compact,
+                                            ),
+                                            onPressed: () {
+                                              Navigator.of(context).pop();
+                                              context.push('/register/student');
+                                            },
+                                            child: const Text('Register', style: TextStyle(fontSize: 12.5)),
+                                          ),
+                                        ],
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TelemetryBadge extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const _TelemetryBadge({
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(AppRadius.xs),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
+          ),
+        ],
+      ),
     );
   }
 }
