@@ -920,7 +920,7 @@ class LandingPage extends StatelessWidget {
                       );
                     },
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
 
                   // Dedicated Driver Operations Banner
                   const _DriverPartnerBanner(),
@@ -928,60 +928,35 @@ class LandingPage extends StatelessWidget {
               ),
             ),
 
-            // Enterprise Trust & Compliance Footer
+            // Sleek Minimal Footer
             ResponsiveCenter(
               maxWidth: 1100,
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 48),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               child: Column(
                 children: [
-                  const Divider(height: 32),
+                  const Divider(height: 1, color: AppColors.border),
+                  const SizedBox(height: 10),
                   Wrap(
-                    alignment: WrapAlignment.center,
+                    alignment: WrapAlignment.spaceBetween,
                     crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: 24,
-                    runSpacing: 12,
+                    spacing: 12,
+                    runSpacing: 4,
                     children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.shield_outlined, size: 15, color: AppColors.inkMuted),
-                          SizedBox(width: 6),
-                          Text('Laguna University Smart Mobility Pilot', style: TextStyle(color: AppColors.inkMuted, fontSize: 12.5, fontWeight: FontWeight.w500)),
-                        ],
+                      const Text(
+                        '© 2026 LuTrike · Laguna University',
+                        style: TextStyle(color: AppColors.inkMuted, fontSize: 11.5),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.lock_outline_rounded, size: 15, color: AppColors.inkMuted),
-                          SizedBox(width: 6),
-                          Text('Atomic PostgreSQL Concurrency', style: TextStyle(color: AppColors.inkMuted, fontSize: 12.5, fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(Icons.sync_rounded, size: 15, color: AppColors.inkMuted),
-                          SizedBox(width: 6),
-                          Text('Realtime Supabase WebSocket Engine', style: TextStyle(color: AppColors.inkMuted, fontSize: 12.5, fontWeight: FontWeight.w500)),
-                        ],
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.inkMuted,
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        ),
+                        onPressed: () => context.push('/login/admin'),
+                        icon: const Icon(Icons.shield_outlined, size: 13),
+                        label: const Text('Admin Console', style: TextStyle(fontSize: 11.5)),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'LuTrike Digital Terminal & Queue Management System · Laguna University',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: AppColors.inkMuted, fontSize: 12),
-                  ),
-                  const SizedBox(height: 8),
-                  TextButton.icon(
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.inkMuted,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    onPressed: () => context.push('/login/admin'),
-                    icon: const Icon(Icons.shield_outlined, size: 14),
-                    label: const Text('Terminal Administration & Operations Console', style: TextStyle(fontSize: 11.5)),
                   ),
                 ],
               ),
@@ -1317,7 +1292,7 @@ class _DriverPartnerBanner extends StatelessWidget {
     final wide = MediaQuery.sizeOf(context).width >= 820;
 
     return Container(
-      padding: EdgeInsets.all(wide ? 24 : 18),
+      padding: EdgeInsets.all(wide ? 20 : 14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -1337,14 +1312,14 @@ class _DriverPartnerBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                    borderRadius: BorderRadius.circular(AppRadius.md),
                   ),
-                  child: const Icon(Icons.electric_rickshaw_rounded, color: Color(0xFFD97706), size: 28),
+                  child: const Icon(Icons.electric_rickshaw_rounded, color: Color(0xFFD97706), size: 26),
                 ),
-                const SizedBox(width: 18),
+                const SizedBox(width: 16),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1352,7 +1327,7 @@ class _DriverPartnerBanner extends StatelessWidget {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFEF3C7),
                               borderRadius: BorderRadius.circular(AppRadius.sm),
@@ -1364,20 +1339,20 @@ class _DriverPartnerBanner extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 5),
                       const Text(
                         'Are you a Laguna University Tricycle Driver?',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppColors.ink),
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5, color: AppColors.ink),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       const Text(
                         'Join the active terminal bay queue, manage real-time passenger counts, and accept student gate pick-up beacons.',
-                        style: TextStyle(fontSize: 12.5, color: AppColors.inkSecondary, height: 1.4),
+                        style: TextStyle(fontSize: 12.5, color: AppColors.inkSecondary, height: 1.35),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 18),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   mainAxisSize: MainAxisSize.min,
@@ -1386,7 +1361,7 @@ class _DriverPartnerBanner extends StatelessWidget {
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFB45309),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                       ),
                       icon: const Icon(Icons.login_rounded, size: 16),
@@ -1398,7 +1373,7 @@ class _DriverPartnerBanner extends StatelessWidget {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF92400E),
                         side: const BorderSide(color: Color(0xFFFCD34D)),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                       ),
                       onPressed: () => context.push('/register/driver'),
@@ -1414,61 +1389,61 @@ class _DriverPartnerBanner extends StatelessWidget {
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(10),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(AppRadius.md),
                       ),
-                      child: const Icon(Icons.electric_rickshaw_rounded, color: Color(0xFFD97706), size: 22),
+                      child: const Icon(Icons.electric_rickshaw_rounded, color: Color(0xFFD97706), size: 20),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF3C7),
                         borderRadius: BorderRadius.circular(AppRadius.sm),
                       ),
                       child: const Text(
                         'AUTHORIZED TODA NETWORK',
-                        style: TextStyle(color: Color(0xFF92400E), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                        style: TextStyle(color: Color(0xFF92400E), fontSize: 9.5, fontWeight: FontWeight.w800, letterSpacing: 0.4),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 const Text(
                   'Are you a Laguna University Tricycle Driver?',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.ink),
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5, color: AppColors.ink),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 const Text(
-                  'Join the active terminal bay queue, manage real-time passenger counts, and accept student gate pick-up beacons.',
-                  style: TextStyle(fontSize: 12.5, color: AppColors.inkSecondary, height: 1.4),
+                  'Join the active terminal bay queue, manage counts, and accept student beacons.',
+                  style: TextStyle(fontSize: 12, color: AppColors.inkSecondary, height: 1.35),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 LayoutBuilder(
                   builder: (context, c) {
-                    final stack = c.maxWidth < 360;
+                    final stack = c.maxWidth < 280;
                     final signInBtn = FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFFB45309),
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        padding: const EdgeInsets.symmetric(vertical: 9.5, horizontal: 10),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                       ),
-                      icon: const Icon(Icons.login_rounded, size: 15),
-                      label: const Text('Driver Sign In', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
+                      icon: const Icon(Icons.login_rounded, size: 14),
+                      label: const Text('Driver Sign In', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
                       onPressed: () => context.push('/login/driver'),
                     );
                     final regBtn = OutlinedButton(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF92400E),
                         side: const BorderSide(color: Color(0xFFFCD34D)),
-                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        padding: const EdgeInsets.symmetric(vertical: 9.5, horizontal: 8),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
                       ),
                       onPressed: () => context.push('/register/driver'),
-                      child: const FittedBox(child: Text('Register Franchise', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12))),
+                      child: const FittedBox(child: Text('Register Franchise', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 11.5))),
                     );
 
                     if (stack) {
@@ -1476,7 +1451,7 @@ class _DriverPartnerBanner extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           signInBtn,
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           regBtn,
                         ],
                       );
