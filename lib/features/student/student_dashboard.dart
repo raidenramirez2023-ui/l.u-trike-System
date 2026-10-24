@@ -728,7 +728,7 @@ class _EnterpriseQueueSummary extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 440;
+        final isCompact = constraints.maxWidth < 560;
         return Container(
           padding: EdgeInsets.all(isCompact ? 14 : 18),
           decoration: BoxDecoration(
@@ -744,21 +744,21 @@ class _EnterpriseQueueSummary extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(8),
+                          padding: const EdgeInsets.all(7),
                           decoration: const BoxDecoration(
                             color: AppColors.primary,
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.departure_board_rounded, color: Colors.white, size: 18),
+                          child: const Icon(Icons.departure_board_rounded, color: Colors.white, size: 16),
                         ),
                         const SizedBox(width: 8),
                         PlateBadge(nextUp.plateNo, isFront: true),
-                        const SizedBox(width: 6),
-                        _EwtBadge(label: ewtLabel),
                         const Spacer(),
                         StatusChip(nextUp.status, compact: true),
                       ],
                     ),
+                    const SizedBox(height: 8),
+                    _EwtBadge(label: ewtLabel),
                     const SizedBox(height: 8),
                     Text(
                       nextNeeded != null && nextNeeded > 0
