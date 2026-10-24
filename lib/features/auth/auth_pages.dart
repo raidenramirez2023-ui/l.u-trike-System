@@ -1488,7 +1488,7 @@ class _LoginPageState extends State<LoginPage> {
   final _email = TextEditingController();
   final _pw = TextEditingController();
   bool _busy = false;
-  bool _rememberMe = true;
+  bool _rememberMe = false;
   String? _error;
 
   @override
@@ -1500,14 +1500,49 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _loadSavedEmail() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Purge legacy shared key so emails never cross over between student/driver/admin
+      if (prefs.containsKey('remember_email')) {
+        await prefs.remove('remember_email');
+      }
+
       final key = 'remember_email_${widget.portal.name}';
-      final savedEmail = prefs.getString(key) ?? prefs.getString('remember_email');
-      final remember = prefs.getBool('remember_me_${widget.portal.name}') ?? (savedEmail != null);
-      if (savedEmail != null && savedEmail.isNotEmpty && mounted) {
+      final rememberKey = 'remember_me_${widget.portal.name}';
+      final savedEmail = prefs.getString(key);
+      final isRemembered = prefs.getBool(rememberKey) ?? false;
+
+      if (isRemembered && savedEmail != null && savedEmail.isNotEmpty && mounted) {
         setState(() {
           _email.text = savedEmail;
-          _rememberMe = remember;
+          _rememberMe = true;
         });
+      } else if (mounted) {
+        setState(() {
+          _rememberMe = isRemembered;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _toggleRememberMe(bool value) async {
+    setState(() {
+      _rememberMe = value;
+      if (!value) {
+        _email.clear();
+      }
+    });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'remember_email_${widget.portal.name}';
+      final rememberKey = 'remember_me_${widget.portal.name}';
+      if (!value) {
+        await prefs.remove(key);
+        await prefs.remove('remember_email');
+        await prefs.setBool(rememberKey, false);
+      } else {
+        await prefs.setBool(rememberKey, true);
+        if (_email.text.trim().isNotEmpty) {
+          await prefs.setString(key, _email.text.trim());
+        }
       }
     } catch (_) {}
   }
@@ -1519,7 +1554,6 @@ class _LoginPageState extends State<LoginPage> {
       final rememberKey = 'remember_me_${widget.portal.name}';
       if (_rememberMe) {
         await prefs.setString(key, _email.text.trim());
-        await prefs.setString('remember_email', _email.text.trim());
         await prefs.setBool(rememberKey, true);
       } else {
         await prefs.remove(key);
@@ -1578,7 +1612,7 @@ class _LoginPageState extends State<LoginPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 InkWell(
-                  onTap: () => setState(() => _rememberMe = !_rememberMe),
+                  onTap: () => _toggleRememberMe(!_rememberMe),
                   borderRadius: BorderRadius.circular(AppRadius.xs),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
@@ -1593,7 +1627,7 @@ class _LoginPageState extends State<LoginPage> {
                             activeColor: AppColors.primary,
                             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                            onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                            onChanged: (v) => _toggleRememberMe(v ?? false),
                           ),
                         ),
                         const SizedBox(width: 8),
