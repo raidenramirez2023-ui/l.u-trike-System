@@ -866,50 +866,55 @@ class LandingPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 20),
 
-                  // 3 Feature Cards
+                  // 3 Feature Cards (Adaptive High-Density Compact Layout)
                   LayoutBuilder(
                     builder: (context, c) {
-                      final wideCards = c.maxWidth >= 768;
-                      const c1 = _CommuterFeatureCard(
+                      final wideCards = c.maxWidth >= 720;
+                      final isCompact = c.maxWidth < 640;
+
+                      final c1 = _CommuterFeatureCard(
                         icon: Icons.radar_rounded,
                         iconColor: AppColors.primary,
                         title: 'Live Bay Occupancy Radar',
-                        description: 'Check actual seat availability in Bay 1 before leaving class. Sub-second Supabase WebSocket sync keeps counts updated live.',
-                        tag: 'SUB-SECOND RADAR',
+                        description: 'Real-time seat counts in Bay 1 before leaving class via live WebSocket telemetry.',
+                        tag: 'SUB-SECOND',
+                        isHorizontalCompact: isCompact,
                       );
-                      const c2 = _CommuterFeatureCard(
+                      final c2 = _CommuterFeatureCard(
                         icon: Icons.cell_tower_rounded,
-                        iconColor: Color(0xFF0284C7),
+                        iconColor: const Color(0xFF0284C7),
                         title: 'Gate Pick-up Signal Beacon',
-                        description: 'Waiting at Gate 1 or Gate 2? Tap to signal student demand. Queued drivers get an instant alert with GPS coordinates and ETA.',
+                        description: 'Broadcast pickup demand from Gate 1 or 2 with instant GPS dispatch to drivers.',
                         tag: 'DEMAND BEACON',
+                        isHorizontalCompact: isCompact,
                       );
-                      const c3 = _CommuterFeatureCard(
+                      final c3 = _CommuterFeatureCard(
                         icon: Icons.balance_rounded,
-                        iconColor: Color(0xFFD97706),
+                        iconColor: const Color(0xFFD97706),
                         title: 'Fair FIFO TODA Dispatch',
-                        description: 'Automated first-in, first-out sequence prevents queue cutting while guaranteeing official student discount fare matrices.',
-                        tag: 'FAIR & TRANSPARENT',
+                        description: 'Automated queue order strictly prevents cutting and guarantees official discount fares.',
+                        tag: 'FAIR & AUDITED',
+                        isHorizontalCompact: isCompact,
                       );
 
                       if (wideCards) {
-                        return const Row(
+                        return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(child: c1),
-                            SizedBox(width: 16),
+                            const SizedBox(width: 14),
                             Expanded(child: c2),
-                            SizedBox(width: 16),
+                            const SizedBox(width: 14),
                             Expanded(child: c3),
                           ],
                         );
                       }
-                      return const Column(
+                      return Column(
                         children: [
                           c1,
-                          SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           c2,
-                          SizedBox(height: 12),
+                          const SizedBox(height: 10),
                           c3,
                         ],
                       );
@@ -1167,6 +1172,7 @@ class _CommuterFeatureCard extends StatelessWidget {
   final String title;
   final String description;
   final String tag;
+  final bool isHorizontalCompact;
 
   const _CommuterFeatureCard({
     required this.icon,
@@ -1174,17 +1180,86 @@ class _CommuterFeatureCard extends StatelessWidget {
     required this.title,
     required this.description,
     required this.tag,
+    this.isHorizontalCompact = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    if (isHorizontalCompact) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppColors.border),
+          boxShadow: AppShadows.subtle,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: iconColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.ink,
+                            letterSpacing: -0.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceMuted,
+                          borderRadius: BorderRadius.circular(AppRadius.xs),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          tag,
+                          style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: AppColors.inkMuted),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    description,
+                    style: const TextStyle(fontSize: 12, height: 1.35, color: AppColors.inkSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
+        boxShadow: AppShadows.subtle,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1193,40 +1268,40 @@ class _CommuterFeatureCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: Icon(icon, color: iconColor, size: 22),
+                child: Icon(icon, color: iconColor, size: 20),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 6),
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceMuted,
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                    borderRadius: BorderRadius.circular(AppRadius.xs),
                     border: Border.all(color: AppColors.border),
                   ),
                   child: Text(
                     tag,
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.inkMuted),
+                    style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: AppColors.inkMuted),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           Text(
             title,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.ink, letterSpacing: -0.2),
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.ink, letterSpacing: -0.2),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             description,
-            style: const TextStyle(fontSize: 13, height: 1.45, color: AppColors.inkSecondary),
+            style: const TextStyle(fontSize: 12.5, height: 1.4, color: AppColors.inkSecondary),
           ),
         ],
       ),
