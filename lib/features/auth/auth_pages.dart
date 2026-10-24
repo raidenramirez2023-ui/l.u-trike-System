@@ -1162,10 +1162,86 @@ class _LiveTerminalRadarModal extends StatefulWidget {
   State<_LiveTerminalRadarModal> createState() => _LiveTerminalRadarModalState();
 }
 
+class _FareDestination {
+  final String label;
+  final String description;
+  final double regularFare;
+  final double studentFare;
+  final String estTime;
+  final String distance;
+  final double lat;
+  final double lng;
+
+  const _FareDestination({
+    required this.label,
+    required this.description,
+    required this.regularFare,
+    required this.studentFare,
+    required this.estTime,
+    required this.distance,
+    required this.lat,
+    required this.lng,
+  });
+}
+
+const List<_FareDestination> _kLagunaUniversityDestinations = [
+  _FareDestination(
+    label: 'AV Building (Academic Hall)',
+    description: 'Inside Campus · Academic Classrooms',
+    regularFare: 15.0,
+    studentFare: 12.0,
+    estTime: '~2 mins',
+    distance: '420 m',
+    lat: 14.2568,
+    lng: 121.4055,
+  ),
+  _FareDestination(
+    label: 'LU Oval & Track Rooms',
+    description: 'Inside Campus · Sports Oval & PE',
+    regularFare: 15.0,
+    studentFare: 12.0,
+    estTime: '~3 mins',
+    distance: '650 m',
+    lat: 14.2558,
+    lng: 121.4042,
+  ),
+  _FareDestination(
+    label: 'Admin Hall & Student Pavilion',
+    description: 'Inside Campus · Registrar & Canteen',
+    regularFare: 15.0,
+    studentFare: 12.0,
+    estTime: '~2 mins',
+    distance: '380 m',
+    lat: 14.2565,
+    lng: 121.4051,
+  ),
+  _FareDestination(
+    label: 'Bubukal Highway Junction',
+    description: 'Brgy. Bubukal · Jeepney Highway Stop',
+    regularFare: 20.0,
+    studentFare: 16.0,
+    estTime: '~4-5 mins',
+    distance: '1.2 km',
+    lat: 14.2610,
+    lng: 121.4080,
+  ),
+  _FareDestination(
+    label: 'Sta. Cruz Plaza / Town Center',
+    description: 'Town Proper · Commercial District',
+    regularFare: 30.0,
+    studentFare: 24.0,
+    estTime: '~8-10 mins',
+    distance: '2.9 km',
+    lat: 14.2780,
+    lng: 121.4150,
+  ),
+];
+
 class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
   List<Terminal> _terminals = [];
   Terminal? _selectedTerminal;
   TerminalOverview? _overview;
+  _FareDestination _selectedDestination = _kLagunaUniversityDestinations.first;
   bool _loading = true;
   String? _error;
 
@@ -1225,10 +1301,49 @@ class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
     } catch (_) {}
   }
 
+  (String text, Color color, IconData icon) _computeEwt() {
+    final ready = _overview?.ready ?? 0;
+    final accepting = _overview?.accepting ?? 0;
+    final inQueue = _overview?.inQueue ?? 0;
+
+    if (ready > 0) {
+      return ('Ready to Board (< 2 mins)', const Color(0xFF059669), Icons.bolt_rounded);
+    }
+    if (accepting > 0) {
+      return ('Loading Passengers (~3–5 mins)', const Color(0xFFD97706), Icons.hourglass_top_rounded);
+    }
+    if (inQueue > 0) {
+      final mins = (inQueue * 3).clamp(3, 15);
+      return ('In Queue (~$mins mins)', const Color(0xFF2563EB), Icons.schedule_rounded);
+    }
+    return ('Standby Queue', AppColors.inkMuted, Icons.access_time_rounded);
+  }
+
+  (String status, Color color, String tip) _computeRushHour() {
+    final now = DateTime.now();
+    final timeInMinutes = now.hour * 60 + now.minute;
+
+    // Dismissal peak: 16:30 - 18:30
+    if (timeInMinutes >= 16 * 60 + 30 && timeInMinutes <= 18 * 60 + 30) {
+      return ('Peak Dismissal Rush', const Color(0xFFDC2626), 'High student volume. Fast queue dispatch.');
+    }
+    // Lunch rush: 11:30 - 13:00
+    if (timeInMinutes >= 11 * 60 + 30 && timeInMinutes <= 13 * 60) {
+      return ('Lunchtime Flow', const Color(0xFFD97706), 'Moderate passenger movement.');
+    }
+    // Morning entry: 07:00 - 08:30
+    if (timeInMinutes >= 7 * 60 && timeInMinutes <= 8 * 60 + 30) {
+      return ('Morning Inbound', const Color(0xFF2563EB), 'Steady tricycle arrivals at campus.');
+    }
+    return ('Normal Campus Flow', const Color(0xFF059669), 'Minimal wait time. Direct boarding.');
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.sizeOf(context);
     final isMobile = screenSize.width < 600;
+    final (ewtText, ewtColor, ewtIcon) = _computeEwt();
+    final (rushStatus, rushColor, rushTip) = _computeRushHour();
 
     return Dialog(
       insetPadding: EdgeInsets.symmetric(
@@ -1364,7 +1479,7 @@ class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Terminal Switcher & Stats
+                              // Terminal Switcher
                               if (_terminals.length > 1) ...[
                                 SingleChildScrollView(
                                   scrollDirection: Axis.horizontal,
@@ -1391,50 +1506,101 @@ class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
                                 const SizedBox(height: 10),
                               ],
 
-                              // Telemetry KPI Bar
+                              // Telemetry KPI & EWT Departure Box
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: AppColors.surfaceMuted,
                                   borderRadius: BorderRadius.circular(AppRadius.md),
                                   border: Border.all(color: AppColors.border),
                                 ),
-                                child: Wrap(
-                                  alignment: WrapAlignment.spaceBetween,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  spacing: 12,
-                                  runSpacing: 8,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
                                     Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Icon(Icons.pin_drop_rounded, size: 16, color: AppColors.primary),
-                                        const SizedBox(width: 6),
-                                        Text(
-                                          _selectedTerminal?.name ?? 'Terminal Bay',
-                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.ink),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.pin_drop_rounded, size: 16, color: AppColors.primary),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              _selectedTerminal?.name ?? 'Terminal Bay',
+                                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.ink),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            _TelemetryBadge(
+                                              icon: Icons.electric_rickshaw_rounded,
+                                              label: '${_overview?.inQueue ?? 0} in Queue',
+                                              color: AppColors.primary,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            _TelemetryBadge(
+                                              icon: Icons.how_to_reg_rounded,
+                                              label: '${_overview?.accepting ?? 0} Loading',
+                                              color: const Color(0xFFD97706),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            _TelemetryBadge(
+                                              icon: Icons.flag_rounded,
+                                              label: '${_overview?.ready ?? 0} Ready',
+                                              color: const Color(0xFF2563EB),
+                                            ),
+                                          ],
                                         ),
                                       ],
                                     ),
-                                    Row(
-                                      mainAxisSize: MainAxisSize.min,
+                                    const SizedBox(height: 10),
+                                    const Divider(height: 1, color: AppColors.border),
+                                    const SizedBox(height: 10),
+                                    Wrap(
+                                      alignment: WrapAlignment.spaceBetween,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      spacing: 12,
+                                      runSpacing: 6,
                                       children: [
-                                        _TelemetryBadge(
-                                          icon: Icons.electric_rickshaw_rounded,
-                                          label: '${_overview?.inQueue ?? 0} in Queue',
-                                          color: AppColors.primary,
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(ewtIcon, size: 15, color: ewtColor),
+                                            const SizedBox(width: 5),
+                                            const Text(
+                                              'Next Departure: ',
+                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.inkSecondary),
+                                            ),
+                                            Text(
+                                              ewtText,
+                                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: ewtColor),
+                                            ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 8),
-                                        _TelemetryBadge(
-                                          icon: Icons.how_to_reg_rounded,
-                                          label: '${_overview?.accepting ?? 0} Loading',
-                                          color: const Color(0xFFD97706),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        _TelemetryBadge(
-                                          icon: Icons.flag_rounded,
-                                          label: '${_overview?.ready ?? 0} Ready',
-                                          color: const Color(0xFF2563EB),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: rushColor.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(AppRadius.xs),
+                                            border: Border.all(color: rushColor.withValues(alpha: 0.25)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Container(
+                                                width: 6,
+                                                height: 6,
+                                                decoration: BoxDecoration(color: rushColor, shape: BoxShape.circle),
+                                              ),
+                                              const SizedBox(width: 5),
+                                              Text(
+                                                rushStatus,
+                                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: rushColor),
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -1443,11 +1609,11 @@ class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
                               ),
                               const SizedBox(height: 12),
 
-                              // Interactive Live Map
+                              // Interactive Live Map (Pins selected destination)
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(AppRadius.md),
                                 child: Container(
-                                  height: isMobile ? 240 : 310,
+                                  height: isMobile ? 220 : 270,
                                   decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(AppRadius.md),
                                     border: Border.all(color: AppColors.border),
@@ -1456,12 +1622,171 @@ class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
                                     terminalLat: _selectedTerminal?.lat ?? 14.2575,
                                     terminalLng: _selectedTerminal?.lng ?? 121.4048,
                                     terminalName: _selectedTerminal?.name ?? 'Gate 1 Terminal',
+                                    pickupLat: _selectedDestination.lat,
+                                    pickupLng: _selectedDestination.lng,
+                                    pickupLabel: _selectedDestination.label,
                                     waitingCount: _overview?.inQueue ?? 0,
-                                    height: isMobile ? 240 : 310,
+                                    height: isMobile ? 220 : 270,
                                   ),
                                 ),
                               ),
-                              const SizedBox(height: 14),
+                              const SizedBox(height: 12),
+
+                              // Option A: Smart Fare Calculator & Route Estimator
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(alpha: 0.03),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFFEF3C7),
+                                            borderRadius: BorderRadius.circular(AppRadius.xs),
+                                          ),
+                                          child: const Icon(Icons.calculate_rounded, size: 16, color: Color(0xFFB45309)),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Expanded(
+                                          child: Text(
+                                            'Smart Fare & Travel Estimator',
+                                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5, color: AppColors.ink),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFFDCFCE7),
+                                            borderRadius: BorderRadius.circular(AppRadius.xs),
+                                            border: Border.all(color: const Color(0xFF86EFAC)),
+                                          ),
+                                          child: const Text(
+                                            '20% STUDENT OFF',
+                                            style: TextStyle(color: Color(0xFF15803D), fontSize: 9.5, fontWeight: FontWeight.w800),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    const Text(
+                                      'Select Campus Destination:',
+                                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, color: AppColors.inkSecondary),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: _kLagunaUniversityDestinations.map((dest) {
+                                          final isChosen = dest.label == _selectedDestination.label;
+                                          return Padding(
+                                            padding: const EdgeInsets.only(right: 6),
+                                            child: ChoiceChip(
+                                              label: Text(dest.label),
+                                              selected: isChosen,
+                                              selectedColor: const Color(0xFFECFDF5),
+                                              side: BorderSide(color: isChosen ? AppColors.primary : const Color(0xFFE2E8F0)),
+                                              labelStyle: TextStyle(
+                                                fontSize: 11.5,
+                                                fontWeight: isChosen ? FontWeight.w700 : FontWeight.w500,
+                                                color: isChosen ? AppColors.primary : AppColors.ink,
+                                              ),
+                                              onSelected: (_) => setState(() => _selectedDestination = dest),
+                                            ),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(AppRadius.sm),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  'STUDENT FARE',
+                                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF059669), letterSpacing: 0.5),
+                                                ),
+                                                const SizedBox(height: 2),
+                                                Row(
+                                                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                                                  textBaseline: TextBaseline.alphabetic,
+                                                  children: [
+                                                    Text(
+                                                      '₱${_selectedDestination.studentFare.toStringAsFixed(2)}',
+                                                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Color(0xFF059669)),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      '₱${_selectedDestination.regularFare.toStringAsFixed(2)} reg',
+                                                      style: const TextStyle(fontSize: 12, decoration: TextDecoration.lineThrough, color: AppColors.inkMuted),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Container(height: 36, width: 1, color: const Color(0xFFCBD5E1)),
+                                          const SizedBox(width: 14),
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.timer_outlined, size: 14, color: AppColors.inkSecondary),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    _selectedDestination.estTime,
+                                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.ink),
+                                                  ),
+                                                ],
+                                              ),
+                                              const SizedBox(height: 3),
+                                              Row(
+                                                children: [
+                                                  const Icon(Icons.route_outlined, size: 14, color: AppColors.inkSecondary),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    _selectedDestination.distance,
+                                                    style: const TextStyle(fontSize: 11.5, color: AppColors.inkSecondary),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      rushTip,
+                                      style: const TextStyle(fontSize: 11, fontStyle: FontStyle.italic, color: AppColors.inkMuted),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 12),
 
                               // Sign In Callout Footer
                               Container(
@@ -1476,7 +1801,7 @@ class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
                                         crossAxisAlignment: CrossAxisAlignment.stretch,
                                         children: [
                                           const Text(
-                                            'Want to queue or request a gate pick-up beacon?',
+                                            'Ready to ride? Sign in with your LU Student ID to join queue.',
                                             style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5, color: Color(0xFF065F46)),
                                           ),
                                           const SizedBox(height: 8),
@@ -1520,7 +1845,7 @@ class _LiveTerminalRadarModalState extends State<_LiveTerminalRadarModal> {
                                         children: [
                                           const Expanded(
                                             child: Text(
-                                              'Want to queue or request a gate pick-up beacon?',
+                                              'Ready to ride? Sign in with your LU Student ID to join queue.',
                                               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Color(0xFF065F46)),
                                             ),
                                           ),
