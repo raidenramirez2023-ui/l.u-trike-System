@@ -132,6 +132,16 @@ class AuthController extends ChangeNotifier {
   Future<void> sendPasswordReset(String email) =>
       sb.auth.resetPasswordForEmail(email.trim(), redirectTo: kIsWeb ? Uri.base.origin : null);
 
+  Future<void> verifyRecoveryOtp({required String email, required String token}) async {
+    final res = await sb.auth.verifyOTP(
+      email: email.trim(),
+      token: token.trim(),
+      type: OtpType.recovery,
+    );
+    session = res.session;
+    notifyListeners();
+  }
+
   Future<void> updatePassword(String newPassword) async {
     await sb.auth.updateUser(UserAttributes(password: newPassword));
     passwordRecovery = false;

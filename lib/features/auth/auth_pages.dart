@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -1774,17 +1775,81 @@ class ForgotPasswordPage extends StatefulWidget {
 }
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
-  final _form = GlobalKey<FormState>();
+  final _emailForm = GlobalKey<FormState>();
+  final _resetForm = GlobalKey<FormState>();
   final _email = TextEditingController();
+  final _otp = TextEditingController();
+  final _pw = TextEditingController();
+  final _pw2 = TextEditingController();
   bool _busy = false, _sent = false;
   String? _error;
+  int _resendCooldown = 0;
+  Timer? _timer;
 
-  Future<void> _submit() async {
-    if (!_form.currentState!.validate()) return;
-    setState(() => _busy = true);
+  @override
+  void dispose() {
+    _email.dispose();
+    _otp.dispose();
+    _pw.dispose();
+    _pw2.dispose();
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  void _startCooldown() {
+    setState(() => _resendCooldown = 60);
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) {
+        t.cancel();
+        return;
+      }
+      if (_resendCooldown <= 1) {
+        t.cancel();
+        setState(() => _resendCooldown = 0);
+      } else {
+        setState(() => _resendCooldown--);
+      }
+    });
+  }
+
+  Future<void> _sendCode() async {
+    if (!_emailForm.currentState!.validate()) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
       await _auth.sendPasswordReset(_email.text);
       setState(() => _sent = true);
+      _startCooldown();
+    } catch (e) {
+      setState(() => _error = friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _verifyAndReset() async {
+    if (!_resetForm.currentState!.validate()) return;
+    final token = _otp.text.trim();
+    if (token.length < 6) {
+      setState(() => _error = 'Please enter the complete 6-digit OTP code.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      // 1. Verify 6-digit OTP code directly with Supabase recovery token
+      await _auth.verifyRecoveryOtp(email: _email.text, token: token);
+      // 2. Update user password
+      await _auth.updatePassword(_pw.text);
+      if (mounted) {
+        showSnack(context, 'Password successfully updated! You can now log in.');
+        context.go('/login/student');
+      }
     } catch (e) {
       setState(() => _error = friendlyError(e));
     } finally {
@@ -1793,26 +1858,131 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   }
 
   @override
-  Widget build(BuildContext context) => AuthScaffold(
+  Widget build(BuildContext context) {
+    if (!_sent) {
+      return AuthScaffold(
         title: 'Reset Password',
-        subtitle: 'We\'ll email you a secure link to reset your account credentials.',
-        child: _sent
-            ? const EmptyState(
-                icon: Icons.mark_email_read_outlined,
-                title: 'Check your email',
-                message: 'If an account exists for that address, a reset link has been sent.',
-              )
-            : Form(
-                key: _form,
-                child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                  _ErrorText(_error),
-                  TextFormField(controller: _email, validator: _validateEmail, keyboardType: TextInputType.emailAddress,
-                      decoration: const InputDecoration(labelText: 'Email Address', prefixIcon: Icon(Icons.alternate_email_rounded))),
-                  const SizedBox(height: 18),
-                  FilledButton(onPressed: _busy ? null : _submit, child: const Text('Send Reset Link')),
-                ]),
+        subtitle: 'Enter your registered email address to receive a 6-digit verification code.',
+        child: Form(
+          key: _emailForm,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _ErrorText(_error),
+              TextFormField(
+                controller: _email,
+                validator: _validateEmail,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email Address',
+                  prefixIcon: Icon(Icons.alternate_email_rounded),
+                ),
               ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: _busy ? null : _sendCode,
+                icon: const Icon(Icons.mark_email_read_rounded, size: 18),
+                label: Text(_busy ? 'Sending OTP Code…' : 'Send 6-Digit Code'),
+              ),
+            ],
+          ),
+        ),
       );
+    }
+
+    return AuthScaffold(
+      title: 'Enter Verification Code',
+      subtitle: 'Type the 6-digit OTP sent to your email and set your new password.',
+      showBack: false,
+      child: Form(
+        key: _resetForm,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primarySoft,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.mark_email_read_outlined, size: 18, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Code sent to ${_email.text}',
+                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: AppColors.primary),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : () => setState(() => _sent = false),
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      foregroundColor: AppColors.inkSecondary,
+                    ),
+                    child: const Text('Change', style: TextStyle(fontSize: 11.5, decoration: TextDecoration.underline)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            _ErrorText(_error),
+            TextFormField(
+              controller: _otp,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 4),
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                labelText: '6-Digit OTP Code',
+                hintText: '• • • • • •',
+                counterText: '',
+                prefixIcon: Icon(Icons.pin_outlined),
+              ),
+              validator: (v) => (v == null || v.trim().length != 6) ? 'Enter 6-digit code' : null,
+            ),
+            const SizedBox(height: 14),
+            PasswordField(
+              controller: _pw,
+              label: 'New Password',
+              validator: _password,
+              action: TextInputAction.next,
+            ),
+            const SizedBox(height: 14),
+            PasswordField(
+              controller: _pw2,
+              label: 'Confirm New Password',
+              validator: (v) => v != _pw.text ? 'Passwords do not match' : null,
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              onPressed: _busy ? null : _verifyAndReset,
+              icon: const Icon(Icons.lock_reset_rounded, size: 18),
+              label: Text(_busy ? 'Updating Password…' : 'Confirm & Change Password'),
+            ),
+            const SizedBox(height: 12),
+            Center(
+              child: TextButton(
+                onPressed: (_busy || _resendCooldown > 0) ? null : _sendCode,
+                child: Text(
+                  _resendCooldown > 0 ? 'Resend code in ${_resendCooldown}s' : 'Didn\'t receive code? Resend',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: _resendCooldown > 0 ? AppColors.inkMuted : AppColors.primary,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class ResetPasswordPage extends StatefulWidget {
