@@ -1833,8 +1833,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   Future<void> _verifyAndReset() async {
     if (!_resetForm.currentState!.validate()) return;
     final token = _otp.text.trim();
-    if (token.length < 6) {
-      setState(() => _error = 'Please enter the complete 6-digit OTP code.');
+    if (token.length < 6 || token.length > 8) {
+      setState(() => _error = 'Please enter the complete verification code sent to your email.');
       return;
     }
     setState(() {
@@ -1842,7 +1842,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       _error = null;
     });
     try {
-      // 1. Verify 6-digit OTP code directly with Supabase recovery token
+      // 1. Verify OTP code directly with Supabase recovery token
       await _auth.verifyRecoveryOtp(email: _email.text, token: token);
       // 2. Update user password
       await _auth.updatePassword(_pw.text);
@@ -1862,7 +1862,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
     if (!_sent) {
       return AuthScaffold(
         title: 'Reset Password',
-        subtitle: 'Enter your registered email address to receive a 6-digit verification code.',
+        subtitle: 'Enter your registered email address to receive an OTP recovery code.',
         child: Form(
           key: _emailForm,
           child: Column(
@@ -1882,7 +1882,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
               FilledButton.icon(
                 onPressed: _busy ? null : _sendCode,
                 icon: const Icon(Icons.mark_email_read_rounded, size: 18),
-                label: Text(_busy ? 'Sending OTP Code…' : 'Send 6-Digit Code'),
+                label: Text(_busy ? 'Sending OTP Code…' : 'Send Verification Code'),
               ),
             ],
           ),
@@ -1892,7 +1892,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     return AuthScaffold(
       title: 'Enter Verification Code',
-      subtitle: 'Type the 6-digit OTP sent to your email and set your new password.',
+      subtitle: 'Type the OTP code sent to your email and set your new password.',
       showBack: false,
       child: Form(
         key: _resetForm,
@@ -1934,16 +1934,21 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             TextFormField(
               controller: _otp,
               keyboardType: TextInputType.number,
-              maxLength: 6,
+              maxLength: 8,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, letterSpacing: 4),
               textAlign: TextAlign.center,
               decoration: const InputDecoration(
-                labelText: '6-Digit OTP Code',
-                hintText: '• • • • • •',
+                labelText: 'OTP Verification Code',
+                hintText: 'Enter 6 or 8-digit code',
                 counterText: '',
                 prefixIcon: Icon(Icons.pin_outlined),
               ),
-              validator: (v) => (v == null || v.trim().length != 6) ? 'Enter 6-digit code' : null,
+              validator: (v) {
+                final t = v?.trim() ?? '';
+                if (t.isEmpty) return 'Enter the verification code';
+                if (t.length < 6 || t.length > 8) return 'Enter a valid 6 or 8-digit code';
+                return null;
+              },
             ),
             const SizedBox(height: 14),
             PasswordField(
